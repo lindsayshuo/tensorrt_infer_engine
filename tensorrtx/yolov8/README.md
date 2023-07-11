@@ -6,7 +6,7 @@ The tensorrt code is derived from [xiaocao-tian/yolov8_tensorrt](https://github.
 
 ## Contributors
 
-<a href="https://github.com/xiaocao-tian"><img src="https://avatars.githubusercontent.com/u/46549527?v=4?s=48" width="40px;" alt=""/></a>
+<a href="https://github.com/xiaocao-tian"><img src="https://avatars.githubusercontent.com/u/65889782?v=4?s=48" width="40px;" alt=""/></a>
 <a href="https://github.com/lindsayshuo"><img src="https://avatars.githubusercontent.com/u/45239466?v=4?s=48" width="40px;" alt=""/></a>
 
 
@@ -53,8 +53,13 @@ sudo ./yolov8 -d [.engine] [image folder]  // deserialize and run inference, the
 // For example yolov8
 sudo ./yolov8 -s yolov8n.wts yolov8.engine n
 sudo ./yolov8 -d yolov8n.engine ../images
-```
 
+
+for cuda postprocess demo
+// For example yolov8
+sudo ./yolov8_cuda_decode -s yolov8n.wts yolov8.engine n
+sudo ./yolov8_cuda_decode -d yolov8n.engine ../images
+```
 3. check the images generated, as follows. _zidane.jpg and _bus.jpg
 
 4. optional, load and run the tensorrt model in python
