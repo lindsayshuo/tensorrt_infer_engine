@@ -85,6 +85,38 @@ void batch_nms(std::vector<std::vector<Detection>> &res_batch, float *output, in
     }
 }
 
+
+void process_decode_ptr_host(std::vector<Detection> &res, const float* decode_ptr_host, int bbox_element, cv::Mat& img, int count)
+{
+    Detection det;
+    for (int i = 0; i < count; i++)
+    {
+        int basic_pos = 1 + i * bbox_element;
+        int keep_flag = decode_ptr_host[basic_pos + 6];
+        if (keep_flag == 1)
+        {
+            det.bbox[0] = decode_ptr_host[basic_pos + 0];
+            det.bbox[1] = decode_ptr_host[basic_pos + 1];
+            det.bbox[2] = decode_ptr_host[basic_pos + 2];
+            det.bbox[3] = decode_ptr_host[basic_pos + 3];
+            det.conf = decode_ptr_host[basic_pos + 4];
+            det.class_id = decode_ptr_host[basic_pos + 5];
+            res.push_back(det);
+        }
+    }
+}
+
+void batch_process(std::vector<std::vector<Detection>> &res_batch, const float* decode_ptr_host, int batch_size, int bbox_element, const std::vector<cv::Mat>& img_batch) {
+    res_batch.resize(batch_size);
+    int count = static_cast<int>(*decode_ptr_host);
+    count = std::min(count, kMaxNumOutputBbox);
+    for (int i = 0; i < batch_size; i++) {
+        auto& img = const_cast<cv::Mat&>(img_batch[i]);
+        process_decode_ptr_host(res_batch[i], &decode_ptr_host[i * count], bbox_element, img, count);
+    }
+}
+
+
 void draw_bbox(std::vector<cv::Mat> &img_batch, std::vector<std::vector<Detection>> &res_batch) {
     for (size_t i = 0; i < img_batch.size(); i++) {
         auto &res = res_batch[i];
@@ -95,53 +127,5 @@ void draw_bbox(std::vector<cv::Mat> &img_batch, std::vector<std::vector<Detectio
             cv::putText(img, std::to_string((int) res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN,
                         1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
         }
-    }
-}
-
-
-void draw_bbox_cuda_process_single(const float* decode_ptr_host, int bbox_element, cv::Mat& img)
-{
-    Detection det;
-    int boxes_count = 0;
-    int count = static_cast<int>(*decode_ptr_host);
-    count = std::min(count, kMaxNumOutputBbox);
-    for (int i = 0; i < count; i++)
-    {
-
-        int basic_pos = 1 + i * bbox_element;
-        int keep_flag = decode_ptr_host[basic_pos + 6];
-        if (keep_flag == 1)
-        {
-            boxes_count += 1;
-            float boxpts[4] = { decode_ptr_host[basic_pos + 0],decode_ptr_host[basic_pos + 1],
-                                decode_ptr_host[basic_pos + 2],decode_ptr_host[basic_pos + 3] };
-            cv::Rect r = get_rect(img, boxpts);
-            det.bbox[0] = r.x;
-            det.bbox[1] = r.y;
-            det.bbox[2] = r.x + r.width;
-            det.bbox[3] = r.y + r.height;
-            det.conf = decode_ptr_host[basic_pos + 4];
-            det.class_id = decode_ptr_host[basic_pos + 5];
-
-        }
-        cv::Rect roi_area = cv::Rect(det.bbox[0], det.bbox[1], det.bbox[2] - det.bbox[0], det.bbox[3] - det.bbox[1]);
-        cv::rectangle(img, roi_area, cv::Scalar(0, 255, 0), 2);
-        std::string label_string = std::to_string((int) det.class_id) + " " + std::to_string(det.conf);
-        cv::putText(img, label_string, cv::Point(det.bbox[0], det.bbox[1] - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-    }
-
-
-}
-
-
-void draw_bbox_cuda_process_batch(float *decode_ptr_host_batch,
-                                  int bbox_element,
-                                  const std::vector<cv::Mat>& img_batch) {
-    for (int b = 0; b < img_batch.size(); b++) {
-        // Create a non-constant reference to pass image parameters
-        cv::Mat& img = const_cast<cv::Mat&>(img_batch[b]);
-
-        // Process the detection results of each image
-        draw_bbox_cuda_process_single(&decode_ptr_host_batch[b], bbox_element, img);
     }
 }
